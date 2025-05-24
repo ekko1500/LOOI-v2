@@ -1,0 +1,217 @@
+.robot-control-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.control-panel {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+.movement-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.movement-section h2 {
+  color: #fff;
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.movement-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.horizontal-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  color: white;
+  font-size: 1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.control-btn:hover {
+  transform: translateY(-2px);
+}
+
+.control-btn:active {
+  transform: translateY(1px);
+}
+
+.control-btn.forward {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.control-btn.backward {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.control-btn.left, .control-btn.right {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+}
+
+.tank-levels {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 15px;
+}
+
+.tank {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.tank h3 {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+}
+
+.level-bar {
+  width: 50px;
+  height: 180px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.level-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  transition: height 0.3s ease;
+}
+
+.level-fill.water {
+  background: linear-gradient(to top, #2196F3, #64B5F6);
+}
+
+.level-fill.chemical {
+  background: linear-gradient(to top, #4CAF50, #81C784);
+}
+
+.level-text {
+  /* display: block; */
+  color: #fff;
+  margin-top: 8px;
+  font-size: 1em;
+}
+
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controls-section h2 {
+  color: #fff;
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.sweeping-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.control-btn.sweep {
+  background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+}
+
+.pump-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.pump {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.pump h3 {
+  color: #fff;
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+}
+
+.pump-btn {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 120px;
+}
+
+.pump-btn.active {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.pump-btn:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .control-panel {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .tank-levels {
+    flex-direction: row;
+  }
+
+  .horizontal-controls {
+    flex-direction: column;
+  }
+
+  .control-btn {
+    width: 100%;
+  }
+
+  .sweeping-controls {
+    flex-direction: row;
+  }
+} 
