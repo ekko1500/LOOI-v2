@@ -8,8 +8,12 @@ const Chatbot = () => {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const HF_API_KEY = "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"; // Replace with your Hugging Face API key
-  const MODEL_NAME = "HuggingFaceH4/zephyr-7b-beta"; // Replace with Zephyr model
+  const HF_API_KEY = process.env.REACT_APP_HF_TOKEN; // Replace with your Hugging Face API key
+  const MODEL_NAME = ""; // Replace with Zephyr model
+
+  // const HF_API_KEY = "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"; // Replace with your Hugging Face API key
+  // const MODEL_NAME = "HuggingFaceH4/zephyr-7b-beta"; // Replace with Zephyr model
+
   // const MODEL_NAME = "HuggingFaceH4/t5-base"; // Replace with Blenderbot model
 
   // Send the user's message to Hugging Face API
