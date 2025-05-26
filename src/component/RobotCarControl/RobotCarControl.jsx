@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, use } from "react";
 import mqtt from "mqtt";
+import IPCameraViewer from "../IPCameraViewer/IPCameraViewer";
 
 // MQTT URL
 const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
@@ -13,6 +14,11 @@ const MQTT_RESPONSE_TOPIC = "robot/status";
 const COMMANDS = {
   general: [
     { name: "Sweep", command: "8|Y", description: "Starts sweeping motion." },
+    {
+      name: "Don't Sweep",
+      command: "8|N",
+      description: "Stop sweeping motion.",
+    },
   ],
   car: [
     { name: "Stop", command: "S", description: "Stop Moveent" },
@@ -22,27 +28,22 @@ const COMMANDS = {
     { name: "Right", command: "R", description: "Turns right." },
   ],
   waterTank: [
+    { name: "Spray Pump Off", command: "8|1", description: "Turns on pump 1." },
     {
-      name: "Get Status",
-      command: "status",
-      description: "Requests water levels.",
-    },
-    { name: "Pump 1 On", command: "8|1", description: "Turns on pump 1." },
-    {
-      name: "Pump 1 Off",
+      name: "Spray Pump On",
       command: "8|Q",
       description: "Turns off pump 1.",
     },
-    { name: "Pump 2 On", command: "8|2", description: "Turns on pump 2." },
+    { name: "Water Pump Off", command: "8|2", description: "Turns on pump 2." },
     {
-      name: "Pump 2 Off",
+      name: "Water Pump 2 On",
       command: "8|W",
       description: "Turns off pump 2.",
     },
 
-    { name: "Fan On", command: "8|3", description: "Turns on the fan." },
+    { name: "Fan Off", command: "8|3", description: "Turns on the fan." },
     {
-      name: "Fan Off",
+      name: "Fan On",
       command: "8|E",
       description: "Turns off the fan.",
     },
@@ -332,15 +333,23 @@ const IOTCommandApp = () => {
 
     mqttClient.on("message", (topic, message) => {
       if (topic === ULTRASONIC_TOPIC) {
-        setUltrasonicData(message.toString());
-        console.log("Ultrasonic Data:", JSON.parse(message.toString()));
+        const msgStr = message.toString();
+        console.log("Raw MQTT message string:", msgStr); // Add this line
+
+        try {
+          const parsed = JSON.parse(msgStr);
+          console.log("Parsed JSON:", parsed);
+          setUltrasonicData(msgStr);
+        } catch (error) {
+          console.error("Failed to parse ultrasonic data:", error);
+        }
       }
     });
 
     return () => mqttClient.end();
   }, []);
 
-  // Simulate sensor data updates using useEffect and setInterval
+  // // Simulate sensor data updates using useEffect and setInterval
   useEffect(() => {
     const interval = setInterval(() => {
       // Simulate fluctuations for Water Tank 1 (e.g., filling/draining slowly)
@@ -435,11 +444,29 @@ const IOTCommandApp = () => {
   }, [pahoReady]);
 
   const disconnectClient = () => {
-    if (client) {
-      client.disconnect();
-      setIsConnected(false);
-      setClient(null);
+    console.debug("disconnectClient called.");
+
+    if (!client) {
+      console.warn("No MQTT client to disconnect.");
+      return;
     }
+
+    try {
+      console.debug("Attempting to disconnect MQTT client...");
+      if (typeof client.disconnect === "function") {
+        client.disconnect();
+        console.info("MQTT client disconnected successfully.");
+      } else {
+        console.error("MQTT client does not have a disconnect method.");
+      }
+    } catch (err) {
+      console.error("Error while disconnecting MQTT client:", err);
+      setError(`Error disconnecting: ${err.message}`);
+    }
+
+    setIsConnected(false);
+    setClient(null);
+    console.debug("Client state reset after disconnect.");
   };
 
   useEffect(() => {
@@ -450,14 +477,35 @@ const IOTCommandApp = () => {
   }, [connectClient, pahoReady]);
 
   const sendCommand = (command) => {
-    if (!client || !isConnected) {
+    console.debug("sendCommand called with:", command);
+
+    if (!client) {
+      console.error("MQTT client is not initialized.");
+      setError("MQTT client is not initialized.");
+      return;
+    }
+
+    if (!isConnected) {
+      console.error("MQTT is not connected.");
       setError("MQTT is not connected.");
       return;
     }
-    const message = new window.Paho.MQTT.Message(command);
-    message.destinationName = MQTT_COMMAND_TOPIC;
-    client.send(message);
-    setMessage(`Sent: ${command}`);
+
+    try {
+      console.debug("Preparing MQTT message...");
+      const message = new window.Paho.MQTT.Message(command);
+      message.destinationName = MQTT_COMMAND_TOPIC;
+
+      console.debug(
+        `Sending message: ${command} to topic: ${MQTT_COMMAND_TOPIC}`
+      );
+      client.send(message);
+      console.info(`Command sent successfully: ${command}`);
+      setMessage(`Sent: ${command}`);
+    } catch (err) {
+      console.error("Failed to send command:", err);
+      setError(`Failed to send command: ${err.message}`);
+    }
   };
 
   const RobotCarControl = () => {
@@ -706,7 +754,6 @@ const IOTCommandApp = () => {
       </style>
       <div className="mqtt-app">
         <h1 className="mqtt-title">IOT Control Panel</h1>
-
         {/* Connection Status */}
         <div className="mqtt-status">
           Status:{" "}
@@ -716,7 +763,6 @@ const IOTCommandApp = () => {
             {isConnected ? "Connected" : "Disconnected"}
           </strong>
         </div>
-
         {/* Message Display */}
         {message && (
           <div className="mqtt-message">
@@ -726,7 +772,6 @@ const IOTCommandApp = () => {
             </button>
           </div>
         )}
-
         {/* Error Display */}
         {error && (
           <div className="mqtt-error">
@@ -809,9 +854,44 @@ const IOTCommandApp = () => {
           <h1 className="dashboard-title">Ultrasonic Sensor Dashboard</h1>
 
           <div className="sensor-grid">
-            <SensorCard title="1" distance={JSON.parse(ultrasonicData).d1} />
-            <SensorCard title="2" distance={JSON.parse(ultrasonicData).d2} />
-            <SensorCard title="3" distance={JSON.parse(ultrasonicData).d3} />
+            <SensorCard
+              sendCommand={sendCommand}
+              title="1"
+              distance={(() => {
+                try {
+                  const data = JSON.parse(ultrasonicData);
+                  return data?.d1 ? parseInt(data.d1) : 7;
+                } catch {
+                  return 7;
+                }
+              })()}
+            />
+
+            <SensorCard
+              sendCommand={sendCommand}
+              title="2"
+              distance={(() => {
+                try {
+                  const data = JSON.parse(ultrasonicData);
+                  return data?.d2 ? parseInt(data.d2) : 7;
+                } catch {
+                  return 7;
+                }
+              })()}
+            />
+
+            <SensorCard
+              sendCommand={sendCommand}
+              title="3"
+              distance={(() => {
+                try {
+                  const data = JSON.parse(ultrasonicData);
+                  return data?.d3 ? parseInt(data.d3) : 255;
+                } catch {
+                  return 255;
+                }
+              })()}
+            />
           </div>
 
           <p className="footer-text">
@@ -826,7 +906,7 @@ const IOTCommandApp = () => {
 export default IOTCommandApp;
 
 // Reusable SensorCard component for displaying individual sensor data
-const SensorCard = ({ distance, title = "1" }) => {
+const SensorCard = ({ distance, title = "1", sendCommand }) => {
   // Calculate water level percentage (7cm = 100%)
   const level = Math.min(Math.max(0, ((7 - distance) / 7) * 100), 100);
 
@@ -837,20 +917,43 @@ const SensorCard = ({ distance, title = "1" }) => {
     return "#22c55e"; // green-500
   };
 
+  // useEffect(() => {
+  //   if (title === "3") {
+  //     if (distance < 15) {
+  //       sendCommand("8|S");
+
+  //       // After 1 second: Brake
+  //       setTimeout(() => {
+  //         sendCommand("8|B");
+
+  //         // After 2 more seconds (total 3s): Lock
+  //         setTimeout(() => {
+  //           sendCommand("8|L");
+
+  //           // After 2 more seconds (total 5s): Float
+  //           setTimeout(() => {
+  //             sendCommand("8|F");
+  //           }, 2000);
+  //         }, 2000);
+  //       }, 1000);
+  //     }
+  //   }
+  // }, [distance]);
+
   return (
     <div className="sensor-card">
       <h2 className="sensor-card-title">
         {title === "1"
-          ? "Water Tank 1"
+          ? "Spray Tank"
           : title == "2"
-          ? "Water Tank 2"
+          ? "Water Tank"
           : "Distance Sensor"}
       </h2>
       <p className="sensor-card-value" style={{ color: getColor(level) }}>
         {distance} cm
       </p>
       <p className="sensor-card-sub-value">
-        {level.toFixed(0)}
+        {level}
         {title == "3" ? "" : "% full"}
       </p>
 

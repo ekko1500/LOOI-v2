@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import "./IPCameraViewer.css";
+import RemoteController from "../RemoteController/RemoteController";
 
 const IPCameraViewer = () => {
-  const [ip, setIp] = useState("");
+  const [ip, setIp] = useState("192.168.193.36"); //10.134.151.203
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
 
@@ -13,26 +14,28 @@ const IPCameraViewer = () => {
       return;
     }
 
-    const streamUrl = `https://${ip}:8080/video`;
+    const streamUrl = `http://${ip}:8080/video`;
     setUrl(streamUrl);
     setError("");
   };
 
   return (
     <div className="camera-container">
-      <h1 className="camera-title">IP Camera Viewer</h1>
+      {!url && (
+        <>
+          <input
+            type="text"
+            placeholder="Enter IP (e.g. 192.168.252.7)"
+            value={ip}
+            onChange={(e) => setIp(e.target.value)}
+            className="camera-input"
+          />
 
-      <input
-        type="text"
-        placeholder="Enter IP (e.g. 192.168.252.7)"
-        value={ip}
-        onChange={(e) => setIp(e.target.value)}
-        className="camera-input"
-      />
-
-      <button onClick={handleConnect} className="camera-button">
-        Connect
-      </button>
+          <button onClick={handleConnect} className="camera-button">
+            Connect
+          </button>
+        </>
+      )}
 
       {error && <div className="camera-error">{error}</div>}
 
@@ -48,6 +51,8 @@ const IPCameraViewer = () => {
               setUrl("");
             }}
           />
+
+          <RemoteController />
         </div>
       )}
     </div>
