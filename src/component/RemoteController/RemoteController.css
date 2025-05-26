@@ -1,0 +1,74 @@
+.remote-container {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+
+  font-family: Arial, sans-serif;
+}
+
+.left-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.direction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  grid-template-rows: repeat(3, 60px);
+  gap: 10px;
+}
+
+.direction-btn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.direction-btn:hover {
+  background-color: #2980b9;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+}
+
+.control-btn {
+  width: 100px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.control-btn.brake {
+  background-color: #e74c3c;
+}
+
+.control-btn.stop {
+  background-color: #f39c12;
+}
+
+.control-btn.start {
+  background-color: #2ecc71;
+}
+
+.control-btn:hover {
+  opacity: 0.85;
+}

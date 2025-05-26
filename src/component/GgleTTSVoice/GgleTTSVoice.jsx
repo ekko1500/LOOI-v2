@@ -36,6 +36,8 @@ import SadVideo from "../../assets/video/sad.mp4";
 import AngryVideo from "../../assets/video/angry.mp4";
 import GoodbyeVideo from "../../assets/video/goodbye.mp4";
 
+import bgMusic from "../../assets/audio/eve.mp3";
+
 const neutral = [Neutral1, Neutral2, Neutral3];
 const smile = [Smile1, Smile2, Smile3];
 const angry = [Angry1, Angry2, Angry3];
@@ -61,6 +63,31 @@ const GgleTTSVoice = () => {
   const videoRef = useRef(null);
   const typingSoundRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const startAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.loop = true;
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.warn("Play failed:", err.message);
+        });
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !audioRef.current.muted;
+      setIsMuted(audioRef.current.muted);
+    }
+  };
 
   useEffect(() => {
     // Ensure video plays when component mounts
@@ -319,6 +346,7 @@ const GgleTTSVoice = () => {
   };
 
   const getVideoSource = (expression) => {
+    // console.log("Expression:", expression.toLowerCase());
     switch (expression.toLowerCase()) {
       case "greeting":
         return GreetingVideo;
@@ -331,7 +359,7 @@ const GgleTTSVoice = () => {
         return SadVideo;
       case "angry":
         return AngryVideo;
-      case "goodbye" || "goodbye":
+      case "<goodbye>" || "<goodbye>":
         return GoodbyeVideo;
       // Add more cases for other expressions
       default:
@@ -478,6 +506,52 @@ const GgleTTSVoice = () => {
             </form>
           </div>
         </>
+      )}
+
+      <audio ref={audioRef} src={bgMusic} />
+
+      {!isPlaying && (
+        <button
+          style={{
+            position: "absolute",
+            bottom: "10px",
+            left: "10px",
+            zIndex: 9999,
+            padding: "8px 16px",
+            background: "#222",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            width: "100px",
+            height: "40px",
+          }}
+          onClick={startAudio}
+        >
+          Start Music
+        </button>
+      )}
+
+      {isPlaying && (
+        <button
+          style={{
+            position: "absolute",
+            bottom: "10px",
+            left: "10px",
+            zIndex: 9999,
+            padding: "8px 16px",
+            background: "#222",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            width: "100px",
+            height: "40px",
+          }}
+          onClick={toggleMute}
+        >
+          {isMuted ? "Unmute" : "Mute"}
+        </button>
       )}
     </div>
   );
