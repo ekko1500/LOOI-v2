@@ -332,39 +332,39 @@ const GgleTTSVoice = () => {
   }, [opencvReady]);
 
   // Smooth interpolation loop for eye position
-  useEffect(() => {
-    // Initialize current position
-    if (
-      currentEyePositionRef.current.x === 0 &&
-      currentEyePositionRef.current.y === 0
-    ) {
-      currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
-    }
+  // useEffect(() => {
+  //   // Initialize current position
+  //   if (
+  //     currentEyePositionRef.current.x === 0 &&
+  //     currentEyePositionRef.current.y === 0
+  //   ) {
+  //     currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
+  //   }
 
-    const smoothUpdate = () => {
-      const target = targetEyePositionRef.current;
-      const current = currentEyePositionRef.current;
+  //   const smoothUpdate = () => {
+  //     const target = targetEyePositionRef.current;
+  //     const current = currentEyePositionRef.current;
 
-      // Linear interpolation (lerp) towards target
-      const dx = target.x - current.x;
-      const dy = target.y - current.y;
+  //     // Linear interpolation (lerp) towards target
+  //     const dx = target.x - current.x;
+  //     const dy = target.y - current.y;
 
-      // Only update if there's a significant difference to avoid unnecessary renders
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        current.x += dx * smoothingFactor;
-        current.y += dy * smoothingFactor;
-        setEye({ x: current.x, y: current.y });
-      }
+  //     // Only update if there's a significant difference to avoid unnecessary renders
+  //     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+  //       current.x += dx * smoothingFactor;
+  //       current.y += dy * smoothingFactor;
+  //       setEye({ x: current.x, y: current.y });
+  //     }
 
-      requestAnimationFrame(smoothUpdate);
-    };
+  //     requestAnimationFrame(smoothUpdate);
+  //   };
 
-    const smoothAnimationId = requestAnimationFrame(smoothUpdate);
+  //   const smoothAnimationId = requestAnimationFrame(smoothUpdate);
 
-    return () => {
-      cancelAnimationFrame(smoothAnimationId);
-    };
-  }, []);
+  //   return () => {
+  //     cancelAnimationFrame(smoothAnimationId);
+  //   };
+  // }, []);
 
   const startAudio = () => {
     if (audioRef.current) {
