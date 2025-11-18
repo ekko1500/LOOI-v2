@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { IoSend } from "react-icons/io5";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import { IoMdChatbubbles, IoMdClose } from "react-icons/io";
+import mqtt from "mqtt";
 import "../../styles/components.css";
 
 import Neutral1 from "../../assets/faceExpressions/neutral1.png";
@@ -67,18 +68,22 @@ const GgleTTSVoice = () => {
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const videoRef = useRef(null);
-  const webcamVideoRef = useRef(null);
-  const canvasRef = useRef(null);
   const typingSoundRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [opencvReady, setOpencvReady] = useState(false);
-  const animationFrameIdRef = useRef(null);
+  const mqttClientRef = useRef(null);
   const targetEyePositionRef = useRef({ x: 0, y: 0 });
   const currentEyePositionRef = useRef({ x: 0, y: 0 });
   const baseSmoothingFactor = 0.4; // Base smoothing factor for responsive movement
+  const lastMessageTimeRef = useRef(null);
+  const noMessageTimeoutRef = useRef(null);
+
+  // MQTT Configuration
+  const MQTT_BROKER = "ws://broker.hivemq.com:8000/mqtt";
+  const MQTT_COMMAND_TOPIC = "robot/command";
+  const NO_MESSAGE_TIMEOUT = 2000; // Return to center after 2 seconds of no messages
 
   const polygon = [
     { x: 550, y: 540 },
@@ -87,229 +92,98 @@ const GgleTTSVoice = () => {
     { x: 1080, y: 560 },
   ];
 
-  // Initialize OpenCV
+  // Initialize MQTT connection to receive red ball position
   useEffect(() => {
-    // Set up callback for when OpenCV loads
-    window.onOpenCvReady = () => {
-      setOpencvReady(true);
-      console.log("OpenCV.js is ready");
-    };
+    // Initialize target position to center
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    targetEyePositionRef.current = { x: windowWidth / 2, y: windowHeight / 2 };
 
-    // Check if OpenCV is already loaded
-    if (window.cv) {
-      setOpencvReady(true);
-    }
+    console.log("Connecting to MQTT broker:", MQTT_BROKER);
 
-    // Also check periodically in case the script loads after component mounts
-    const checkInterval = setInterval(() => {
-      if (window.cv) {
-        setOpencvReady(true);
-        clearInterval(checkInterval);
+    const mqttClient = mqtt.connect(MQTT_BROKER);
+    mqttClientRef.current = mqttClient;
+
+    mqttClient.on("connect", () => {
+      console.log("✅ Connected to MQTT broker");
+      mqttClient.subscribe(MQTT_COMMAND_TOPIC);
+      console.log("📡 Subscribed to topic:", MQTT_COMMAND_TOPIC);
+    });
+
+    mqttClient.on("message", (topic, message) => {
+      const msg = message.toString();
+      console.log("📨 Received MQTT message:", msg);
+
+      // Update last message time
+      lastMessageTimeRef.current = Date.now();
+
+      // Clear existing timeout
+      if (noMessageTimeoutRef.current) {
+        clearTimeout(noMessageTimeoutRef.current);
       }
-    }, 100);
 
-    return () => clearInterval(checkInterval);
+      // Parse message format: "9|B127" where 127 is the angle (0-180)
+      const match = msg.match(/^\d+\|B(\d+)$/);
+      if (match) {
+        const angle = parseInt(match[1], 10);
+        console.log("📐 Parsed angle:", angle);
+
+        // Convert angle (0-180) to screen X position
+        // Angle 0 = left side, 90 = center, 180 = right side
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        // Map angle 0-180 to screen X position (0 to windowWidth)
+        // Using linear mapping: angle 0 -> 0, angle 180 -> windowWidth
+        const screenX = (angle / 180) * windowWidth;
+        
+        // Keep Y at center (or you can adjust based on your needs)
+        const screenY = windowHeight / 2;
+
+        // Clamp to polygon boundary if needed
+        let final = { x: screenX, y: screenY };
+        if (!isInsidePolygon(final, polygon)) {
+          final = clampPointToPolygon(final, polygon);
+        }
+
+        // Update target position (will be smoothed)
+        targetEyePositionRef.current = final;
+
+        // Initialize current position on first detection if needed
+        if (
+          currentEyePositionRef.current.x === 0 &&
+          currentEyePositionRef.current.y === 0
+        ) {
+          currentEyePositionRef.current = { x: final.x, y: final.y };
+          setEye({ x: final.x, y: final.y });
+        }
+
+        // Set timeout to return to center if no more messages
+        noMessageTimeoutRef.current = setTimeout(() => {
+          const windowWidth = window.innerWidth;
+          const windowHeight = window.innerHeight;
+          const centerX = windowWidth / 2;
+          const centerY = windowHeight / 2;
+          
+          targetEyePositionRef.current = { x: centerX, y: centerY };
+          console.log("⏱️ No messages received, returning to center");
+        }, NO_MESSAGE_TIMEOUT);
+      }
+    });
+
+    mqttClient.on("error", (err) => {
+      console.error("❌ MQTT error:", err);
+    });
+
+    return () => {
+      if (mqttClient) {
+        mqttClient.end();
+      }
+      if (noMessageTimeoutRef.current) {
+        clearTimeout(noMessageTimeoutRef.current);
+      }
+    };
   }, []);
-
-  // Initialize webcam
-  useEffect(() => {
-    if (opencvReady && webcamVideoRef.current) {
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: "user" } })
-        .then((stream) => {
-          if (webcamVideoRef.current) {
-            webcamVideoRef.current.srcObject = stream;
-            webcamVideoRef.current.play();
-          }
-        })
-        .catch((err) => {
-          console.error("Error accessing webcam:", err);
-        });
-    }
-
-    return () => {
-      if (webcamVideoRef.current?.srcObject) {
-        const tracks = webcamVideoRef.current.srcObject.getTracks();
-        tracks.forEach((track) => track.stop());
-      }
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
-    };
-  }, [opencvReady]);
-
-  // Start red ball detection when webcam is ready
-  useEffect(() => {
-    if (opencvReady && webcamVideoRef.current && canvasRef.current) {
-      const detectRedBall = () => {
-        const video = webcamVideoRef.current;
-        const canvas = canvasRef.current;
-
-        if (!video || !canvas || !window.cv) {
-          animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
-          return;
-        }
-
-        if (video.readyState !== 4) {
-          animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
-          return;
-        }
-
-        const ctx = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        try {
-          let src = window.cv.imread(canvas);
-          let hsv = new window.cv.Mat();
-          let mask = new window.cv.Mat();
-
-          // Convert to HSV
-          window.cv.cvtColor(src, hsv, window.cv.COLOR_RGBA2RGB);
-          window.cv.cvtColor(hsv, hsv, window.cv.COLOR_RGB2HSV);
-
-          // Red color ranges
-          let lowRed1 = new window.cv.Mat(
-            hsv.rows,
-            hsv.cols,
-            hsv.type(),
-            [0, 120, 70, 0]
-          );
-          let highRed1 = new window.cv.Mat(
-            hsv.rows,
-            hsv.cols,
-            hsv.type(),
-            [10, 255, 255, 255]
-          );
-          let lowRed2 = new window.cv.Mat(
-            hsv.rows,
-            hsv.cols,
-            hsv.type(),
-            [170, 120, 70, 0]
-          );
-          let highRed2 = new window.cv.Mat(
-            hsv.rows,
-            hsv.cols,
-            hsv.type(),
-            [180, 255, 255, 255]
-          );
-
-          let mask1 = new window.cv.Mat();
-          let mask2 = new window.cv.Mat();
-          window.cv.inRange(hsv, lowRed1, highRed1, mask1);
-          window.cv.inRange(hsv, lowRed2, highRed2, mask2);
-          window.cv.add(mask1, mask2, mask);
-
-          // Reduce noise
-          let M = window.cv.Mat.ones(5, 5, window.cv.CV_8U);
-          window.cv.morphologyEx(mask, mask, window.cv.MORPH_OPEN, M);
-          window.cv.morphologyEx(mask, mask, window.cv.MORPH_DILATE, M);
-
-          // Find contours
-          let contours = new window.cv.MatVector();
-          let hierarchy = new window.cv.Mat();
-          window.cv.findContours(
-            mask,
-            contours,
-            hierarchy,
-            window.cv.RETR_EXTERNAL,
-            window.cv.CHAIN_APPROX_SIMPLE
-          );
-
-          let maxArea = 0;
-          let maxContour = null;
-          for (let i = 0; i < contours.size(); i++) {
-            let cnt = contours.get(i);
-            let area = window.cv.contourArea(cnt);
-            if (area > maxArea) {
-              maxArea = area;
-              maxContour = cnt;
-            }
-          }
-
-          if (maxContour && maxArea > 300) {
-            let moments = window.cv.moments(maxContour);
-            let cx = moments.m10 / moments.m00;
-            let cy = moments.m01 / moments.m00;
-
-            // Convert canvas coordinates to screen coordinates
-            // Scale from canvas dimensions to window dimensions
-            // Mirror the x-axis so left/right movement matches
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-
-            const screenX = windowWidth - (cx / canvasWidth) * windowWidth;
-            const screenY = (cy / canvasHeight) * windowHeight;
-
-            // Clamp to polygon boundary if needed
-            let final = { x: screenX, y: screenY };
-            if (!isInsidePolygon(final, polygon)) {
-              final = clampPointToPolygon(final, polygon);
-            }
-
-            // Update target position (will be smoothed)
-            targetEyePositionRef.current = final;
-
-            // Initialize current position on first detection if needed
-            if (
-              currentEyePositionRef.current.x === 0 &&
-              currentEyePositionRef.current.y === 0
-            ) {
-              currentEyePositionRef.current = { x: final.x, y: final.y };
-              setEye({ x: final.x, y: final.y });
-            }
-          } else {
-            // No red ball detected - return to center
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const centerX = windowWidth / 2;
-            const centerY = windowHeight / 2;
-
-            targetEyePositionRef.current = { x: centerX, y: centerY };
-          }
-
-          // Cleanup
-          src.delete();
-          hsv.delete();
-          mask.delete();
-          mask1.delete();
-          mask2.delete();
-          contours.delete();
-          hierarchy.delete();
-          M.delete();
-          lowRed1.delete();
-          highRed1.delete();
-          lowRed2.delete();
-          highRed2.delete();
-        } catch (error) {
-          console.error("Error in red ball detection:", error);
-        }
-
-        animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
-      };
-
-      // Start detection when video is ready
-      const startDetection = () => {
-        if (webcamVideoRef.current?.readyState === 4) {
-          detectRedBall();
-        } else {
-          setTimeout(startDetection, 100);
-        }
-      };
-
-      startDetection();
-    }
-
-    return () => {
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
-    };
-  }, [opencvReady]);
 
   // Smooth interpolation loop for eye position
   useEffect(() => {
@@ -574,32 +448,6 @@ const GgleTTSVoice = () => {
 
   return (
     <div className="component-wrapper">
-      {/* Hidden webcam video and canvas for red ball detection */}
-      <video
-        ref={webcamVideoRef}
-        autoPlay
-        playsInline
-        style={{
-          position: "absolute",
-          width: "640px",
-          height: "480px",
-          top: "-9999px",
-          left: "-9999px",
-          visibility: "hidden",
-        }}
-      />
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "absolute",
-          width: "640px",
-          height: "480px",
-          top: "-9999px",
-          left: "-9999px",
-          visibility: "hidden",
-        }}
-      />
-
       {!response && (
         <video
           ref={videoRef}

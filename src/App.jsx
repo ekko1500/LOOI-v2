@@ -3,7 +3,7 @@ import Chatbot from "./component/Chatbot/Chatbot";
 import GgleTTSVoice from "./component/GgleTTSVoice/GgleTTSVoice";
 import GoogleTTS from "./component/GoogleTTS/GoogleTTS";
 import TogetherChatbot from "./component/Together/Together";
-import TogetherTTS from "./component/TogetherTTS/TogetherTTS";
+// import TogetherTTS from "./component/TogetherTTS/TogetherTTS";
 import TTSComponent from "./component/TTSComponent";
 import FaceDisplay from "./component/FaceDisplay/FaceDisplay";
 import FaceDisplayTTS from "./component/FaceDisplayTTS/FaceDisplayTTS";
@@ -26,8 +26,8 @@ function App() {
         return <GgleTTSVoice />;
       case "together-chat":
         return <TogetherChatbot />;
-      case "together-tts":
-        return <TogetherTTS />;
+      // case "together-tts":
+      //   return <TogetherTTS />;
       case "google-tts":
         return <GoogleTTS />;
       case "tts-component":
