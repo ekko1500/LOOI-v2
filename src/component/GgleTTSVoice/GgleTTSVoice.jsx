@@ -78,7 +78,7 @@ const GgleTTSVoice = () => {
   const animationFrameIdRef = useRef(null);
   const targetEyePositionRef = useRef({ x: 0, y: 0 });
   const currentEyePositionRef = useRef({ x: 0, y: 0 });
-  const smoothingFactor = 0.15; // Lower = smoother but slower (0.1-0.3 recommended)
+  const baseSmoothingFactor = 0.4; // Base smoothing factor for responsive movement
 
   const polygon = [
     { x: 550, y: 540 },
@@ -328,11 +328,18 @@ const GgleTTSVoice = () => {
       // Linear interpolation (lerp) towards target
       const dx = target.x - current.x;
       const dy = target.y - current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Adaptive smoothing: faster when far away, smoother when close
+      // Use higher factor (up to 0.7) when distance is large, lower (0.3) when close
+      const adaptiveFactor = distance > 100 
+        ? Math.min(0.7, baseSmoothingFactor + (distance / 500) * 0.3)
+        : baseSmoothingFactor;
 
       // Only update if there's a significant difference to avoid unnecessary renders
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        current.x += dx * smoothingFactor;
-        current.y += dy * smoothingFactor;
+      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        current.x += dx * adaptiveFactor;
+        current.y += dy * adaptiveFactor;
         setEye({ x: current.x, y: current.y });
       }
 
