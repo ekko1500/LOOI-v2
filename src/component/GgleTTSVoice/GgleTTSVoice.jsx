@@ -84,6 +84,7 @@ const GgleTTSVoice = () => {
   const MQTT_BROKER = "ws://broker.hivemq.com:8000/mqtt";
   const MQTT_COMMAND_TOPIC = "robot/command";
   const NO_MESSAGE_TIMEOUT = 2000; // Return to center after 2 seconds of no messages
+  //hello
 
   const polygon = [
     { x: 550, y: 540 },
@@ -132,11 +133,11 @@ const GgleTTSVoice = () => {
         // Angle 0 = left side, 90 = center, 180 = right side
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
-        
+
         // Map angle 0-180 to screen X position (0 to windowWidth)
         // Using linear mapping: angle 0 -> 0, angle 180 -> windowWidth
         const screenX = (angle / 180) * windowWidth;
-        
+
         // Keep Y at center (or you can adjust based on your needs)
         const screenY = windowHeight / 2;
 
@@ -164,7 +165,7 @@ const GgleTTSVoice = () => {
           const windowHeight = window.innerHeight;
           const centerX = windowWidth / 2;
           const centerY = windowHeight / 2;
-          
+
           targetEyePositionRef.current = { x: centerX, y: centerY };
           console.log("⏱️ No messages received, returning to center");
         }, NO_MESSAGE_TIMEOUT);
@@ -206,9 +207,10 @@ const GgleTTSVoice = () => {
 
       // Adaptive smoothing: faster when far away, smoother when close
       // Use higher factor (up to 0.7) when distance is large, lower (0.3) when close
-      const adaptiveFactor = distance > 100 
-        ? Math.min(0.7, baseSmoothingFactor + (distance / 500) * 0.3)
-        : baseSmoothingFactor;
+      const adaptiveFactor =
+        distance > 100
+          ? Math.min(0.7, baseSmoothingFactor + (distance / 500) * 0.3)
+          : baseSmoothingFactor;
 
       // Only update if there's a significant difference to avoid unnecessary renders
       if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
