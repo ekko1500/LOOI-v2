@@ -234,27 +234,51 @@ const GgleTTSVoice = () => {
             let cx = moments.m10 / moments.m00;
             let cy = moments.m01 / moments.m00;
 
-            // Convert canvas coordinates to screen coordinates
-            // Scale from canvas dimensions to window dimensions
-            // Mirror the x-axis so left/right movement matches
+            // -------------------------------
+            // 📌 FIX: ORIENTATION CORRECTION
+            // -------------------------------
             const canvasWidth = canvas.width;
             const canvasHeight = canvas.height;
+
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
 
-            const screenX = windowWidth - (cx / canvasWidth) * windowWidth;
-            const screenY = (cy / canvasHeight) * windowHeight;
+            const isLandscape = windowWidth > windowHeight;
+            const angle = screen.orientation?.angle || 0;
 
-            // Clamp to polygon boundary if needed
+            let fixedCx = cx;
+            let fixedCy = cy;
+
+            if (isLandscape) {
+              if (angle === 90) {
+                // Landscape LEFT (rotated clockwise)
+                const newCx = cy;
+                const newCy = canvasWidth - cx;
+                fixedCx = newCx;
+                fixedCy = newCy;
+              } else if (angle === 270) {
+                // Landscape RIGHT (rotated counter-clockwise)
+                const newCx = canvasHeight - cy;
+                const newCy = cx;
+                fixedCx = newCx;
+                fixedCy = newCy;
+              }
+            }
+
+            // Convert to screen coordinates
+            const screenX = windowWidth - (fixedCx / canvasWidth) * windowWidth;
+            const screenY = (fixedCy / canvasHeight) * windowHeight;
+
             let final = { x: screenX, y: screenY };
+
+            // Clamp to polygon area
             if (!isInsidePolygon(final, polygon)) {
               final = clampPointToPolygon(final, polygon);
             }
 
-            // Update target position (will be smoothed)
+            // Update target (smooth movement)
             targetEyePositionRef.current = final;
 
-            // Initialize current position on first detection if needed
             if (
               currentEyePositionRef.current.x === 0 &&
               currentEyePositionRef.current.y === 0
@@ -263,12 +287,9 @@ const GgleTTSVoice = () => {
               setEye({ x: final.x, y: final.y });
             }
           } else {
-            // No red ball detected - return to center
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const centerX = windowWidth / 2;
-            const centerY = windowHeight / 2;
-
+            // No red ball → go to screen center
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
             targetEyePositionRef.current = { x: centerX, y: centerY };
           }
 
@@ -292,7 +313,6 @@ const GgleTTSVoice = () => {
         animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
       };
 
-      // Start detection when video is ready
       const startDetection = () => {
         if (webcamVideoRef.current?.readyState === 4) {
           detectRedBall();
