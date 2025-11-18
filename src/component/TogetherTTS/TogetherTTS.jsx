@@ -31,7 +31,7 @@ const confused = [Confused1, Confused2, Confused3];
 const sad = [Sad1, Sad2, Sad3];
 
 // ✅ Hugging Face Inference API
-const HF_API_KEY = "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";
+const HF_API_KEY = process.env.HF_API_KEY;
 const HF_MODEL = "meta-llama/Llama-3-8b-chat-hf"; // you can swap to another chat model
 
 const TogetherTTS = () => {

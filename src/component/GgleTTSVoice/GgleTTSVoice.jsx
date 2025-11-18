@@ -43,7 +43,8 @@ const confused = [Confused1, Confused2, Confused3];
 const sad = [Sad1, Sad2, Sad3];
 
 // Hugging Face API
-const HF_API_KEY = "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";
+const HF_API_KEY = process.env.HF_API_KEY;
+
 const HF_MODEL = "deepseek-ai/DeepSeek-R1:novita";
 // Change to preferred HF chat model
 
@@ -92,12 +93,12 @@ const GgleTTSVoice = () => {
       setOpencvReady(true);
       console.log("OpenCV.js is ready");
     };
-    
+
     // Check if OpenCV is already loaded
     if (window.cv) {
       setOpencvReady(true);
     }
-    
+
     // Also check periodically in case the script loads after component mounts
     const checkInterval = setInterval(() => {
       if (window.cv) {
@@ -105,7 +106,7 @@ const GgleTTSVoice = () => {
         clearInterval(checkInterval);
       }
     }, 100);
-    
+
     return () => clearInterval(checkInterval);
   }, []);
 
@@ -142,7 +143,7 @@ const GgleTTSVoice = () => {
       const detectRedBall = () => {
         const video = webcamVideoRef.current;
         const canvas = canvasRef.current;
-        
+
         if (!video || !canvas || !window.cv) {
           animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
           return;
@@ -158,7 +159,7 @@ const GgleTTSVoice = () => {
         canvas.height = video.videoHeight;
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         try {
           let src = window.cv.imread(canvas);
           let hsv = new window.cv.Mat();
@@ -169,7 +170,12 @@ const GgleTTSVoice = () => {
           window.cv.cvtColor(hsv, hsv, window.cv.COLOR_RGB2HSV);
 
           // Red color ranges
-          let lowRed1 = new window.cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 120, 70, 0]);
+          let lowRed1 = new window.cv.Mat(
+            hsv.rows,
+            hsv.cols,
+            hsv.type(),
+            [0, 120, 70, 0]
+          );
           let highRed1 = new window.cv.Mat(
             hsv.rows,
             hsv.cols,
@@ -234,7 +240,7 @@ const GgleTTSVoice = () => {
             const canvasHeight = canvas.height;
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-            
+
             const screenX = windowWidth - (cx / canvasWidth) * windowWidth;
             const screenY = (cy / canvasHeight) * windowHeight;
 
@@ -246,9 +252,12 @@ const GgleTTSVoice = () => {
 
             // Update target position (will be smoothed)
             targetEyePositionRef.current = final;
-            
+
             // Initialize current position on first detection if needed
-            if (currentEyePositionRef.current.x === 0 && currentEyePositionRef.current.y === 0) {
+            if (
+              currentEyePositionRef.current.x === 0 &&
+              currentEyePositionRef.current.y === 0
+            ) {
               currentEyePositionRef.current = { x: final.x, y: final.y };
               setEye({ x: final.x, y: final.y });
             }
@@ -258,7 +267,7 @@ const GgleTTSVoice = () => {
             const windowHeight = window.innerHeight;
             const centerX = windowWidth / 2;
             const centerY = windowHeight / 2;
-            
+
             targetEyePositionRef.current = { x: centerX, y: centerY };
           }
 
@@ -304,7 +313,10 @@ const GgleTTSVoice = () => {
   // Smooth interpolation loop for eye position
   useEffect(() => {
     // Initialize current position
-    if (currentEyePositionRef.current.x === 0 && currentEyePositionRef.current.y === 0) {
+    if (
+      currentEyePositionRef.current.x === 0 &&
+      currentEyePositionRef.current.y === 0
+    ) {
       currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
     }
 
@@ -551,7 +563,6 @@ const GgleTTSVoice = () => {
         return null;
     }
   };
-
 
   return (
     <div className="component-wrapper">
