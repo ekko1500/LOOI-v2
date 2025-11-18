@@ -234,51 +234,27 @@ const GgleTTSVoice = () => {
             let cx = moments.m10 / moments.m00;
             let cy = moments.m01 / moments.m00;
 
-            // -------------------------------
-            // 📌 FIX: ORIENTATION CORRECTION
-            // -------------------------------
+            // Convert canvas coordinates to screen coordinates
+            // Scale from canvas dimensions to window dimensions
+            // Mirror the x-axis so left/right movement matches
             const canvasWidth = canvas.width;
             const canvasHeight = canvas.height;
-
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
 
-            const isLandscape = windowWidth > windowHeight;
-            const angle = screen.orientation?.angle || 0;
+            const screenX = windowWidth - (cx / canvasWidth) * windowWidth;
+            const screenY = (cy / canvasHeight) * windowHeight;
 
-            let fixedCx = cx;
-            let fixedCy = cy;
-
-            if (isLandscape) {
-              if (angle === 90) {
-                // Landscape LEFT (rotated clockwise)
-                const newCx = cy;
-                const newCy = canvasWidth - cx;
-                fixedCx = newCx;
-                fixedCy = newCy;
-              } else if (angle === 270) {
-                // Landscape RIGHT (rotated counter-clockwise)
-                const newCx = canvasHeight - cy;
-                const newCy = cx;
-                fixedCx = newCx;
-                fixedCy = newCy;
-              }
-            }
-
-            // Convert to screen coordinates
-            const screenX = windowWidth - (fixedCx / canvasWidth) * windowWidth;
-            const screenY = (fixedCy / canvasHeight) * windowHeight;
-
+            // Clamp to polygon boundary if needed
             let final = { x: screenX, y: screenY };
-
-            // Clamp to polygon area
             if (!isInsidePolygon(final, polygon)) {
               final = clampPointToPolygon(final, polygon);
             }
 
-            // Update target (smooth movement)
+            // Update target position (will be smoothed)
             targetEyePositionRef.current = final;
 
+            // Initialize current position on first detection if needed
             if (
               currentEyePositionRef.current.x === 0 &&
               currentEyePositionRef.current.y === 0
@@ -287,9 +263,12 @@ const GgleTTSVoice = () => {
               setEye({ x: final.x, y: final.y });
             }
           } else {
-            // No red ball → go to screen center
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
+            // No red ball detected - return to center
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const centerX = windowWidth / 2;
+            const centerY = windowHeight / 2;
+
             targetEyePositionRef.current = { x: centerX, y: centerY };
           }
 
@@ -313,6 +292,7 @@ const GgleTTSVoice = () => {
         animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
       };
 
+      // Start detection when video is ready
       const startDetection = () => {
         if (webcamVideoRef.current?.readyState === 4) {
           detectRedBall();
@@ -332,39 +312,39 @@ const GgleTTSVoice = () => {
   }, [opencvReady]);
 
   // Smooth interpolation loop for eye position
-  // useEffect(() => {
-  //   // Initialize current position
-  //   if (
-  //     currentEyePositionRef.current.x === 0 &&
-  //     currentEyePositionRef.current.y === 0
-  //   ) {
-  //     currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
-  //   }
+  useEffect(() => {
+    // Initialize current position
+    if (
+      currentEyePositionRef.current.x === 0 &&
+      currentEyePositionRef.current.y === 0
+    ) {
+      currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
+    }
 
-  //   const smoothUpdate = () => {
-  //     const target = targetEyePositionRef.current;
-  //     const current = currentEyePositionRef.current;
+    const smoothUpdate = () => {
+      const target = targetEyePositionRef.current;
+      const current = currentEyePositionRef.current;
 
-  //     // Linear interpolation (lerp) towards target
-  //     const dx = target.x - current.x;
-  //     const dy = target.y - current.y;
+      // Linear interpolation (lerp) towards target
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
 
-  //     // Only update if there's a significant difference to avoid unnecessary renders
-  //     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-  //       current.x += dx * smoothingFactor;
-  //       current.y += dy * smoothingFactor;
-  //       setEye({ x: current.x, y: current.y });
-  //     }
+      // Only update if there's a significant difference to avoid unnecessary renders
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        current.x += dx * smoothingFactor;
+        current.y += dy * smoothingFactor;
+        setEye({ x: current.x, y: current.y });
+      }
 
-  //     requestAnimationFrame(smoothUpdate);
-  //   };
+      requestAnimationFrame(smoothUpdate);
+    };
 
-  //   const smoothAnimationId = requestAnimationFrame(smoothUpdate);
+    const smoothAnimationId = requestAnimationFrame(smoothUpdate);
 
-  //   return () => {
-  //     cancelAnimationFrame(smoothAnimationId);
-  //   };
-  // }, []);
+    return () => {
+      cancelAnimationFrame(smoothAnimationId);
+    };
+  }, []);
 
   const startAudio = () => {
     if (audioRef.current) {
