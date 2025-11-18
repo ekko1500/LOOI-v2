@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import Together from "together-ai";
 import ReactMarkdown from "react-markdown";
 import { IoSend } from "react-icons/io5";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
@@ -31,7 +30,6 @@ import TypingSound from "../../assets/video/typing.mp3";
 import GreetingVideo from "../../assets/video/greeting.mp4";
 import ExplainingVideo from "../../assets/video/explain.mp4";
 import HappyVideo from "../../assets/video/happy.mp4";
-// import GratefulVideo from "../../assets/video/grateful.mp4";
 import SadVideo from "../../assets/video/sad.mp4";
 import AngryVideo from "../../assets/video/angry.mp4";
 import GoodbyeVideo from "../../assets/video/goodbye.mp4";
@@ -44,9 +42,10 @@ const angry = [Angry1, Angry2, Angry3];
 const confused = [Confused1, Confused2, Confused3];
 const sad = [Sad1, Sad2, Sad3];
 
-const together = new Together({
-  apiKey: "f4b524473beb41d6ea30ece6ad3cbff0fc948931518164504da174d19a5133fe", // Replace with your actual API key
-});
+// Hugging Face API
+const HF_API_KEY = "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";
+const HF_MODEL = "deepseek-ai/DeepSeek-R1:novita";
+// Change to preferred HF chat model
 
 const GgleTTSVoice = () => {
   const [input, setInput] = useState("");
@@ -58,27 +57,289 @@ const GgleTTSVoice = () => {
   const [isListening, setIsListening] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [language, setLanguage] = useState("my"); // "my" for Burmese, "en" for English
+
+  const [positionLeft, setPositionLeft] = useState(800);
+  const [positionTop, setPositionTop] = useState(330);
+  const [eye, setEye] = useState({ x: 0, y: 0 });
+
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const videoRef = useRef(null);
+  const webcamVideoRef = useRef(null);
+  const canvasRef = useRef(null);
   const typingSoundRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [opencvReady, setOpencvReady] = useState(false);
+  const animationFrameIdRef = useRef(null);
+  const targetEyePositionRef = useRef({ x: 0, y: 0 });
+  const currentEyePositionRef = useRef({ x: 0, y: 0 });
+  const smoothingFactor = 0.15; // Lower = smoother but slower (0.1-0.3 recommended)
+
+  const polygon = [
+    { x: 550, y: 540 },
+    { x: 500, y: 160 },
+    { x: 1070, y: 185 },
+    { x: 1080, y: 560 },
+  ];
+
+  // Initialize OpenCV
+  useEffect(() => {
+    // Set up callback for when OpenCV loads
+    window.onOpenCvReady = () => {
+      setOpencvReady(true);
+      console.log("OpenCV.js is ready");
+    };
+    
+    // Check if OpenCV is already loaded
+    if (window.cv) {
+      setOpencvReady(true);
+    }
+    
+    // Also check periodically in case the script loads after component mounts
+    const checkInterval = setInterval(() => {
+      if (window.cv) {
+        setOpencvReady(true);
+        clearInterval(checkInterval);
+      }
+    }, 100);
+    
+    return () => clearInterval(checkInterval);
+  }, []);
+
+  // Initialize webcam
+  useEffect(() => {
+    if (opencvReady && webcamVideoRef.current) {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: "user" } })
+        .then((stream) => {
+          if (webcamVideoRef.current) {
+            webcamVideoRef.current.srcObject = stream;
+            webcamVideoRef.current.play();
+          }
+        })
+        .catch((err) => {
+          console.error("Error accessing webcam:", err);
+        });
+    }
+
+    return () => {
+      if (webcamVideoRef.current?.srcObject) {
+        const tracks = webcamVideoRef.current.srcObject.getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, [opencvReady]);
+
+  // Start red ball detection when webcam is ready
+  useEffect(() => {
+    if (opencvReady && webcamVideoRef.current && canvasRef.current) {
+      const detectRedBall = () => {
+        const video = webcamVideoRef.current;
+        const canvas = canvasRef.current;
+        
+        if (!video || !canvas || !window.cv) {
+          animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
+          return;
+        }
+
+        if (video.readyState !== 4) {
+          animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
+          return;
+        }
+
+        const ctx = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        try {
+          let src = window.cv.imread(canvas);
+          let hsv = new window.cv.Mat();
+          let mask = new window.cv.Mat();
+
+          // Convert to HSV
+          window.cv.cvtColor(src, hsv, window.cv.COLOR_RGBA2RGB);
+          window.cv.cvtColor(hsv, hsv, window.cv.COLOR_RGB2HSV);
+
+          // Red color ranges
+          let lowRed1 = new window.cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 120, 70, 0]);
+          let highRed1 = new window.cv.Mat(
+            hsv.rows,
+            hsv.cols,
+            hsv.type(),
+            [10, 255, 255, 255]
+          );
+          let lowRed2 = new window.cv.Mat(
+            hsv.rows,
+            hsv.cols,
+            hsv.type(),
+            [170, 120, 70, 0]
+          );
+          let highRed2 = new window.cv.Mat(
+            hsv.rows,
+            hsv.cols,
+            hsv.type(),
+            [180, 255, 255, 255]
+          );
+
+          let mask1 = new window.cv.Mat();
+          let mask2 = new window.cv.Mat();
+          window.cv.inRange(hsv, lowRed1, highRed1, mask1);
+          window.cv.inRange(hsv, lowRed2, highRed2, mask2);
+          window.cv.add(mask1, mask2, mask);
+
+          // Reduce noise
+          let M = window.cv.Mat.ones(5, 5, window.cv.CV_8U);
+          window.cv.morphologyEx(mask, mask, window.cv.MORPH_OPEN, M);
+          window.cv.morphologyEx(mask, mask, window.cv.MORPH_DILATE, M);
+
+          // Find contours
+          let contours = new window.cv.MatVector();
+          let hierarchy = new window.cv.Mat();
+          window.cv.findContours(
+            mask,
+            contours,
+            hierarchy,
+            window.cv.RETR_EXTERNAL,
+            window.cv.CHAIN_APPROX_SIMPLE
+          );
+
+          let maxArea = 0;
+          let maxContour = null;
+          for (let i = 0; i < contours.size(); i++) {
+            let cnt = contours.get(i);
+            let area = window.cv.contourArea(cnt);
+            if (area > maxArea) {
+              maxArea = area;
+              maxContour = cnt;
+            }
+          }
+
+          if (maxContour && maxArea > 300) {
+            let moments = window.cv.moments(maxContour);
+            let cx = moments.m10 / moments.m00;
+            let cy = moments.m01 / moments.m00;
+
+            // Convert canvas coordinates to screen coordinates
+            // Scale from canvas dimensions to window dimensions
+            // Mirror the x-axis so left/right movement matches
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            const screenX = windowWidth - (cx / canvasWidth) * windowWidth;
+            const screenY = (cy / canvasHeight) * windowHeight;
+
+            // Clamp to polygon boundary if needed
+            let final = { x: screenX, y: screenY };
+            if (!isInsidePolygon(final, polygon)) {
+              final = clampPointToPolygon(final, polygon);
+            }
+
+            // Update target position (will be smoothed)
+            targetEyePositionRef.current = final;
+            
+            // Initialize current position on first detection if needed
+            if (currentEyePositionRef.current.x === 0 && currentEyePositionRef.current.y === 0) {
+              currentEyePositionRef.current = { x: final.x, y: final.y };
+              setEye({ x: final.x, y: final.y });
+            }
+          } else {
+            // No red ball detected - return to center
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const centerX = windowWidth / 2;
+            const centerY = windowHeight / 2;
+            
+            targetEyePositionRef.current = { x: centerX, y: centerY };
+          }
+
+          // Cleanup
+          src.delete();
+          hsv.delete();
+          mask.delete();
+          mask1.delete();
+          mask2.delete();
+          contours.delete();
+          hierarchy.delete();
+          M.delete();
+          lowRed1.delete();
+          highRed1.delete();
+          lowRed2.delete();
+          highRed2.delete();
+        } catch (error) {
+          console.error("Error in red ball detection:", error);
+        }
+
+        animationFrameIdRef.current = requestAnimationFrame(detectRedBall);
+      };
+
+      // Start detection when video is ready
+      const startDetection = () => {
+        if (webcamVideoRef.current?.readyState === 4) {
+          detectRedBall();
+        } else {
+          setTimeout(startDetection, 100);
+        }
+      };
+
+      startDetection();
+    }
+
+    return () => {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, [opencvReady]);
+
+  // Smooth interpolation loop for eye position
+  useEffect(() => {
+    // Initialize current position
+    if (currentEyePositionRef.current.x === 0 && currentEyePositionRef.current.y === 0) {
+      currentEyePositionRef.current = { x: eye.x || 0, y: eye.y || 0 };
+    }
+
+    const smoothUpdate = () => {
+      const target = targetEyePositionRef.current;
+      const current = currentEyePositionRef.current;
+
+      // Linear interpolation (lerp) towards target
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+
+      // Only update if there's a significant difference to avoid unnecessary renders
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        current.x += dx * smoothingFactor;
+        current.y += dy * smoothingFactor;
+        setEye({ x: current.x, y: current.y });
+      }
+
+      requestAnimationFrame(smoothUpdate);
+    };
+
+    const smoothAnimationId = requestAnimationFrame(smoothUpdate);
+
+    return () => {
+      cancelAnimationFrame(smoothAnimationId);
+    };
+  }, []);
 
   const startAudio = () => {
     if (audioRef.current) {
       audioRef.current.loop = true;
       audioRef.current
         .play()
-        .then(() => {
-          setIsPlaying(true);
-        })
-        .catch((err) => {
-          console.warn("Play failed:", err.message);
-        });
+        .then(() => setIsPlaying(true))
+        .catch((err) => console.warn(err.message));
     }
   };
 
@@ -90,54 +351,33 @@ const GgleTTSVoice = () => {
   };
 
   useEffect(() => {
-    // Ensure video plays when component mounts
-    if (videoRef.current) {
-      videoRef.current.play().catch((error) => {
-        console.error("Error playing video:", error);
-      });
-    }
+    if (videoRef.current) videoRef.current.play().catch(console.error);
   }, []);
 
   useEffect(() => {
-    // Initialize speech recognition
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false; // Stop after the user finishes speaking
-      recognitionRef.current.interimResults = false; // Only final results
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = "en-US";
 
       recognitionRef.current.onresult = (event) => {
         const transcript = Array.from(event.results)
           .map((result) => result[0].transcript)
           .join("");
-
         setInput(transcript);
-
-        // Automatically call getChatbotResponse after speech is recognized
         getChatbotResponse(transcript);
       };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    } else {
-      console.warn("Speech recognition not supported in this browser.");
+      recognitionRef.current.onend = () => setIsListening(false);
     }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      clearTimeout(silenceTimerRef.current);
-    };
   }, []);
 
   useEffect(() => {
-    // Initialize typing sound
     typingSoundRef.current = new Audio(TypingSound);
-    typingSoundRef.current.volume = 0.3; // Set volume to 30%
+    typingSoundRef.current.volume = 0.3;
   }, []);
 
   const startListening = () => {
@@ -146,78 +386,80 @@ const GgleTTSVoice = () => {
       setIsListening(true);
     }
   };
-
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
     }
   };
-
   const toggleListening = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    isListening ? stopListening() : startListening();
   };
 
   const getChatbotResponse = async (userInput) => {
     if (!userInput.trim()) return;
-
     setLoading(true);
     setResponse("");
     setExpression("");
 
     try {
-      const chatResponse = await together.chat.completions.create({
-        messages: [
-          {
-            role: "system",
-            content: `
-        You are an expert poultry farmer with years of experience. Your job is to provide detailed, helpful, and practical advice on poultry farming, including raising chickens, choosing breeds, feeding, disease prevention, and farm management. And you answer straight to the question . ${
-          language === "my"
-            ? "you answer in burmese language and short answer"
-            : "you answer in english language "
-        } .
-        For every response, you must include a facial expression indicator at the beginning of your answer, based on the nature of your advice. The expression should be one of the following: explain,happy,grateful,sad,angry,greeting,goodbye. act more human , you can mad, sad, angry  ..expression like a human just for rol play .you can be angry if being asked a stupid question or bad words just for role play.
-        The response should always follow this exact format: '<expression> : Here is the advice I have for you...' or '<expression> | ...'.
-        if user ask explain me , express explain expression
-      `,
+      const res = await fetch(
+        "https://router.huggingface.co/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${HF_API_KEY}`,
+            "Content-Type": "application/json",
           },
-          { role: "user", content: userInput },
-        ],
-        model: "deepseek-ai/DeepSeek-V3",
-        temperature: 0.7,
-        top_p: 0.7,
-        top_k: 50,
-        repetition_penalty: 1,
-        stop: [" "],
-        stream: true,
-      });
-
-      let fullResponse = "";
-      for await (const token of chatResponse) {
-        const tokenContent = token.choices[0]?.delta?.content || "";
-        fullResponse += tokenContent;
-
-        if (fullResponse) {
-          const parts = fullResponse.split(/[:|]/);
-          if (parts.length > 1) {
-            setExpression(parts[0].trim());
-            const response = parts.slice(1).join(":").trim();
-            console.log("Response:", fullResponse);
-            setResponse(response); // Ge
-          } else {
-            setResponse(fullResponse);
-          }
+          body: JSON.stringify({
+            // model: "Qwen/Qwen2.5-7B-Instruct",
+            model: "deepseek-ai/DeepSeek-R1:novita",
+            messages: [
+              {
+                role: "system",
+                content: `
+        You are an expert poultry farmer.
+        Respond in ${language === "my" ? "Burmese" : "English"}.
+        Start with an expression: happy, explain, angry, etc.
+        Format: "<expression> : advice..."
+      `,
+              },
+              {
+                role: "user",
+                content: userInput,
+              },
+            ],
+          }),
         }
+      );
+
+      const data = await res.json();
+      console.log("Response data:", data);
+
+      let fullResponse =
+        data?.choices?.[0]?.message?.content ||
+        "⚠️ No response from Hugging Face API.";
+
+      // Remove content inside <think>...</think> tags
+      fullResponse = fullResponse
+        .replace(/<think>[\s\S]*?<\/think>/g, "")
+        .trim();
+
+      if (fullResponse) {
+        const parts = fullResponse.split(/[:|]/);
+        if (parts.length > 1) {
+          setExpression(parts[0].trim());
+          setResponse(parts.slice(1).join(":").trim());
+        } else {
+          setResponse(fullResponse);
+        }
+      } else {
+        setResponse("⚠️ No response from Hugging Face API.");
       }
 
-      // Trigger TTS after response is received
-      speakText(fullResponse);
+      // speakText(fullResponse);
     } catch (error) {
-      console.error("Error fetching response:", error);
+      console.error(error);
       setResponse("⚠️ Error: Unable to get a response.");
     }
 
@@ -225,10 +467,9 @@ const GgleTTSVoice = () => {
   };
 
   useEffect(() => {
-    let newFace = IDK; // Default face
-
+    let newFace = IDK;
     switch (expression.toLowerCase()) {
-      case "smile":
+      case "happy":
         newFace = smile[Math.floor(Math.random() * smile.length)];
         break;
       case "angry":
@@ -247,52 +488,17 @@ const GgleTTSVoice = () => {
         newFace = IDK;
         break;
     }
-
     setFace(newFace);
   }, [expression]);
 
-  // Function to speak text using the proxy server
   const speakText = async (text) => {
-    // Remove the expression part (e.g., "smile | ...")
     const cleanedText = text.replace(/^.*?[|:]/, "").trim();
-
     try {
-      // Fetch the audio from the proxy server
       const proxyUrl = `http://localhost:5000/tts?text=${encodeURIComponent(
         cleanedText
       )}&lang=${language}`;
-
-      // Create an audio element and play it
-      const audio = new Audio();
-
-      // Add event listeners for better error handling
-      audio.addEventListener("error", (e) => {
-        console.error("Audio error:", e);
-        console.log("Audio error details:", {
-          error: audio.error,
-          networkState: audio.networkState,
-          readyState: audio.readyState,
-        });
-      });
-
-      // Set the source and play
-      audio.src = proxyUrl;
-
-      try {
-        await audio.play();
-        console.log(
-          `Playing TTS in ${language === "my" ? "Burmese" : "English"}...`
-        );
-      } catch (playError) {
-        console.error("Error playing audio:", playError);
-        // Try to load the audio first
-        try {
-          await audio.load();
-          await audio.play();
-        } catch (loadError) {
-          console.error("Error loading audio:", loadError);
-        }
-      }
+      const audio = new Audio(proxyUrl);
+      await audio.play();
     } catch (error) {
       console.error("Error in TTS:", error);
     }
@@ -300,53 +506,34 @@ const GgleTTSVoice = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (input.trim()) {
-      getChatbotResponse(input);
-    }
+    if (input.trim()) getChatbotResponse(input);
     setIdle(false);
     setInput("");
   };
-
   const handleClearChat = () => {
     setExpression("");
     setResponse("");
     setLoading(false);
   };
-
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
-
   const handleInputChange = (e) => {
     setInput(e.target.value);
-
-    // Play typing sound
     if (typingSoundRef.current) {
-      typingSoundRef.current.currentTime = 0; // Reset sound to start
-      typingSoundRef.current
-        .play()
-        .catch((error) => console.log("Error playing typing sound:", error));
+      typingSoundRef.current.currentTime = 0;
+      typingSoundRef.current.play().catch(console.log);
     }
-
-    // Clear previous timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Set new timeout to stop sound after 1 second of no typing
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      if (typingSoundRef.current) {
-        typingSoundRef.current.pause();
-      }
+      if (typingSoundRef.current) typingSoundRef.current.pause();
     }, 1000);
   };
 
   const getVideoSource = (expression) => {
-    // console.log("Expression:", expression.toLowerCase());
     switch (expression.toLowerCase()) {
       case "greeting":
         return GreetingVideo;
@@ -354,21 +541,46 @@ const GgleTTSVoice = () => {
         return ExplainingVideo;
       case "happy":
         return HappyVideo;
-
       case "sad":
         return SadVideo;
       case "angry":
         return AngryVideo;
-      case "<goodbye>" || "<goodbye>":
+      case "goodbye":
         return GoodbyeVideo;
-      // Add more cases for other expressions
       default:
         return null;
     }
   };
 
+
   return (
     <div className="component-wrapper">
+      {/* Hidden webcam video and canvas for red ball detection */}
+      <video
+        ref={webcamVideoRef}
+        autoPlay
+        playsInline
+        style={{
+          position: "absolute",
+          width: "640px",
+          height: "480px",
+          top: "-9999px",
+          left: "-9999px",
+          visibility: "hidden",
+        }}
+      />
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          width: "640px",
+          height: "480px",
+          top: "-9999px",
+          left: "-9999px",
+          visibility: "hidden",
+        }}
+      />
+
       {!response && (
         <video
           ref={videoRef}
@@ -378,8 +590,9 @@ const GgleTTSVoice = () => {
           playsInline
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
+            transform: "translate(-50%,-50%)",
+            left: eye.x,
+            top: eye.y,
             width: "100%",
             height: "100%",
             objectFit: "cover",
@@ -411,19 +624,18 @@ const GgleTTSVoice = () => {
       </button>
       <button
         className="toggle-chat"
-        style={{
-          left: "70px",
-        }}
-        onClick={() => handleClearChat()}
+        style={{ left: "70px" }}
+        onClick={handleClearChat}
       >
         <IoMdClose size={24} />
       </button>
+
       {isVisible && (
         <>
           <div className="chatbot-container">
             <h1>🐔 Poultry Farming Assistant</h1>
             <div className="response">
-              {expression && (
+              {expression == 3 && (
                 <div className="face-container">
                   {getVideoSource(expression) ? (
                     <video
@@ -449,24 +661,22 @@ const GgleTTSVoice = () => {
               )}
               <div className="response-box">
                 {!response && !idle ? (
-                  <>
-                    <div className="loading-screen">
-                      <video
-                        autoPlay
-                        loop
-                        playsInline
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      >
-                        <source src={LoadingVideo} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                      <div className="loading-text">Thinking...</div>
-                    </div>
-                  </>
+                  <div className="loading-screen">
+                    <video
+                      autoPlay
+                      loop
+                      playsInline
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    >
+                      <source src={LoadingVideo} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                    <div className="loading-text">Thinking...</div>
+                  </div>
                 ) : (
                   <ReactMarkdown>{response}</ReactMarkdown>
                 )}
@@ -509,12 +719,11 @@ const GgleTTSVoice = () => {
       )}
 
       <audio ref={audioRef} src={bgMusic} />
-
       {!isPlaying && (
         <button
           style={{
             position: "absolute",
-            bottom: "10px",
+            bottom: "130px",
             left: "10px",
             zIndex: 9999,
             padding: "8px 16px",
@@ -531,12 +740,11 @@ const GgleTTSVoice = () => {
           Start Music
         </button>
       )}
-
       {isPlaying && (
         <button
           style={{
             position: "absolute",
-            bottom: "10px",
+            bottom: "130px",
             left: "10px",
             zIndex: 9999,
             padding: "8px 16px",
@@ -558,3 +766,55 @@ const GgleTTSVoice = () => {
 };
 
 export default GgleTTSVoice;
+
+function isInsidePolygon(point, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x,
+      yi = polygon[i].y;
+    const xj = polygon[j].x,
+      yj = polygon[j].y;
+
+    const intersect =
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function clampPointToPolygon(point, polygon) {
+  let closestPoint = null;
+  let minDist = Infinity;
+
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i];
+    const b = polygon[(i + 1) % polygon.length];
+
+    const clamped = closestPointOnLine(point, a, b);
+    const dist = Math.hypot(clamped.x - point.x, clamped.y - point.y);
+
+    if (dist < minDist) {
+      minDist = dist;
+      closestPoint = clamped;
+    }
+  }
+
+  return closestPoint;
+}
+
+function closestPointOnLine(p, a, b) {
+  const A = { x: p.x - a.x, y: p.y - a.y };
+  const B = { x: b.x - a.x, y: b.y - a.y };
+
+  const t = Math.max(
+    0,
+    Math.min(1, (A.x * B.x + A.y * B.y) / (B.x * B.x + B.y * B.y))
+  );
+
+  return {
+    x: a.x + B.x * t,
+    y: a.y + B.y * t,
+  };
+}

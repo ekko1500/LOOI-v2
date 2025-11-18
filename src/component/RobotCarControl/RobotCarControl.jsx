@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import mqtt from "mqtt";
 import "../../App.css";
 
-const MQTT_BROKER = "wss://test.mosquitto.org:8081/mqtt";
+const MQTT_BROKER = "ws://broker.hivemq.com:8000/mqtt";
 const MQTT_COMMAND_TOPIC = "robot/command";
 const MQTT_STATUS_TOPIC = "robot/status";
 
@@ -92,16 +92,16 @@ const IOTCommandApp = () => {
       <h1>Robot Control Panel</h1>
 
       <div className="status-indicator">
-        <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+        <div
+          className={`connection-status ${
+            isConnected ? "connected" : "disconnected"
+          }`}
+        >
           {isConnected ? "✅ CONNECTED" : "❌ DISCONNECTED"}
         </div>
       </div>
 
-      {message && (
-        <div className="message-display">
-          {message}
-        </div>
-      )}
+      {message && <div className="message-display">{message}</div>}
 
       {/* Sensor Data Display */}
       {sensorData && (
@@ -122,7 +122,7 @@ const IOTCommandApp = () => {
           <div className="d-pad">
             <div className="d-pad-row">
               <div className="d-pad-placeholder"></div>
-              <button 
+              <button
                 className="d-pad-button up"
                 onClick={() => sendCommand("8|F")}
               >
@@ -131,14 +131,14 @@ const IOTCommandApp = () => {
               <div className="d-pad-placeholder"></div>
             </div>
             <div className="d-pad-row">
-              <button 
+              <button
                 className="d-pad-button left"
                 onClick={() => sendCommand("8|L")}
               >
                 ←
               </button>
               <div className="d-pad-center"></div>
-              <button 
+              <button
                 className="d-pad-button right"
                 onClick={() => sendCommand("8|R")}
               >
@@ -147,7 +147,7 @@ const IOTCommandApp = () => {
             </div>
             <div className="d-pad-row">
               <div className="d-pad-placeholder"></div>
-              <button 
+              <button
                 className="d-pad-button down"
                 onClick={() => sendCommand("8|B")}
               >
@@ -156,10 +156,7 @@ const IOTCommandApp = () => {
               <div className="d-pad-placeholder"></div>
             </div>
           </div>
-          <button 
-            className="stop-button"
-            onClick={() => sendCommand("8|S")}
-          >
+          <button className="stop-button" onClick={() => sendCommand("8|S")}>
             STOP
           </button>
         </div>
@@ -167,19 +164,19 @@ const IOTCommandApp = () => {
         {/* Right Side - Action Buttons */}
         <div className="control-section action-controls">
           <h2>Action Controls</h2>
-          
+
           {/* Relay Controls */}
           <div className="relay-buttons">
             <h3>Relays</h3>
             <div className="button-row">
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|1")}
                 >
                   R1 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|Q")}
                 >
@@ -187,13 +184,13 @@ const IOTCommandApp = () => {
                 </button>
               </div>
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|2")}
                 >
                   R2 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|W")}
                 >
@@ -203,13 +200,13 @@ const IOTCommandApp = () => {
             </div>
             <div className="button-row">
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|3")}
                 >
                   R3 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|E")}
                 >
@@ -217,13 +214,13 @@ const IOTCommandApp = () => {
                 </button>
               </div>
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|4")}
                 >
                   R4 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|T")}
                 >
@@ -233,13 +230,13 @@ const IOTCommandApp = () => {
             </div>
             <div className="button-row">
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|5")}
                 >
                   R5 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|Y")}
                 >
@@ -247,13 +244,13 @@ const IOTCommandApp = () => {
                 </button>
               </div>
               <div className="button-pair">
-                <button 
+                <button
                   className="relay-button on"
                   onClick={() => sendCommand("8|6")}
                 >
                   R6 ON
                 </button>
-                <button 
+                <button
                   className="relay-button off"
                   onClick={() => sendCommand("8|U")}
                 >
@@ -267,19 +264,19 @@ const IOTCommandApp = () => {
           <div className="arm-buttons">
             <h3>Arm Controls</h3>
             <div className="button-row">
-              <button 
+              <button
                 className="arm-button pick"
                 onClick={() => sendCommand("9|P")}
               >
                 PICK
               </button>
-              <button 
+              <button
                 className="arm-button home"
                 onClick={() => sendCommand("9|H")}
               >
                 HOME
               </button>
-              <button 
+              <button
                 className="arm-button buzzer"
                 onClick={() => sendCommand("9|K")}
               >
@@ -307,7 +304,8 @@ const IOTCommandApp = () => {
 
       {/* Debug Tip */}
       <div className="debug-tip">
-        <strong>💡 Debug Tip:</strong> Open browser console (F12) to see detailed debug messages!
+        <strong>💡 Debug Tip:</strong> Open browser console (F12) to see
+        detailed debug messages!
       </div>
     </div>
   );

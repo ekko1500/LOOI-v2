@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import Together from "together-ai";
-import './FaceDisplayTTS.css';
+import "./FaceDisplayTTS.css";
 
 // Import face expressions
 import Neutral1 from "../../assets/faceExpressions/neutral1.png";
@@ -35,9 +35,9 @@ const together = new Together({
 
 const FaceDisplayTTS = () => {
   const [showInput, setShowInput] = useState(false);
-  const [text, setText] = useState('');
-  const [displayText, setDisplayText] = useState('');
-  const [expression, setExpression] = useState('neutral');
+  const [text, setText] = useState("");
+  const [displayText, setDisplayText] = useState("");
+  const [expression, setExpression] = useState("neutral");
   const [face, setFace] = useState(IDK);
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState("");
@@ -48,11 +48,11 @@ const FaceDisplayTTS = () => {
 
   useEffect(() => {
     // Initialize speech recognition
-    if ('webkitSpeechRecognition' in window) {
+    if ("webkitSpeechRecognition" in window) {
       recognitionRef.current = new window.webkitSpeechRecognition();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.lang = "en-US";
 
       recognitionRef.current.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
@@ -63,7 +63,7 @@ const FaceDisplayTTS = () => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error("Speech recognition error:", event.error);
         setIsListening(false);
       };
 
@@ -73,7 +73,7 @@ const FaceDisplayTTS = () => {
     }
 
     // Initialize speech synthesis
-    if ('speechSynthesis' in window) {
+    if ("speechSynthesis" in window) {
       speechSynthesisRef.current = window.speechSynthesis;
     }
   }, []);
@@ -107,7 +107,7 @@ const FaceDisplayTTS = () => {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in your browser.');
+      alert("Speech recognition is not supported in your browser.");
       return;
     }
 
@@ -178,7 +178,7 @@ const FaceDisplayTTS = () => {
     }
 
     setLoading(false);
-    setText('');
+    setText("");
     if (voiceInput) {
       setShowInput(false);
     }
@@ -186,7 +186,9 @@ const FaceDisplayTTS = () => {
 
   const handleTextToSpeech = (text) => {
     if (!text || !speechSynthesisRef.current) {
-      console.warn("[Web Speech TTS] No text provided or speech synthesis not supported.");
+      console.warn(
+        "[Web Speech TTS] No text provided or speech synthesis not supported."
+      );
       return;
     }
 
@@ -201,15 +203,15 @@ const FaceDisplayTTS = () => {
 
     // Create new utterance
     const utterance = new SpeechSynthesisUtterance(responseText);
-    
+
     // Configure voice settings
-    utterance.rate = 1.0;  // Speed of speech
+    utterance.rate = 1.0; // Speed of speech
     utterance.pitch = 1.0; // Pitch of voice
     utterance.volume = 1.0; // Volume
 
     // Try to get a female voice if available
     const voices = speechSynthesisRef.current.getVoices();
-    const femaleVoice = voices.find(voice => voice.name.includes('Female'));
+    const femaleVoice = voices.find((voice) => voice.name.includes("Female"));
     if (femaleVoice) {
       utterance.voice = femaleVoice;
     }
@@ -221,7 +223,7 @@ const FaceDisplayTTS = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     getChatbotResponse();
-    setText('');
+    setText("");
     setShowInput(false);
     setShowResponse(true);
   };
@@ -229,14 +231,10 @@ const FaceDisplayTTS = () => {
   return (
     <div className="face-display-container">
       <div className="face-wrapper">
-        <img
-          src={face}
-          alt={expression}
-          className="face-image"
-        />
+        <img src={face} alt={expression} className="face-image" />
         {displayText && showResponse && (
           <div className="text-overlay">
-            <button 
+            <button
               className="close-response"
               onClick={() => setShowResponse(false)}
             >
@@ -247,11 +245,11 @@ const FaceDisplayTTS = () => {
         )}
       </div>
 
-      <button 
+      <button
         className="floating-button"
         onClick={() => setShowInput(!showInput)}
       >
-        {showInput ? '✕' : '💬'}
+        {showInput ? "✕" : "💬"}
       </button>
 
       {showInput && (
@@ -268,18 +266,14 @@ const FaceDisplayTTS = () => {
               />
               <button
                 type="button"
-                className={`mic-button ${isListening ? 'listening' : ''}`}
+                className={`mic-button ${isListening ? "listening" : ""}`}
                 onClick={toggleListening}
                 disabled={loading}
               >
                 🎤
               </button>
             </div>
-            <button 
-              type="submit" 
-              className="submit-button"
-              disabled={loading}
-            >
+            <button type="submit" className="submit-button" disabled={loading}>
               {loading ? "Thinking..." : "Ask"}
             </button>
           </form>
@@ -289,4 +283,4 @@ const FaceDisplayTTS = () => {
   );
 };
 
-export default FaceDisplayTTS; 
+export default FaceDisplayTTS;

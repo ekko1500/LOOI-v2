@@ -1,10 +1,3 @@
-/* .chatbot-container {
-  margin: 0 auto;
-  font-family: "Arial", sans-serif;
-  background-color: #f7f7f7;
-  border-radius: 10px;
-} */
-
 h1 {
   text-align: center;
 }
@@ -21,8 +14,6 @@ h1 {
   overflow-y: auto;
   margin-bottom: 10px;
 }
-
-
 
 textarea {
   width: 100%;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Client } from "paho-mqtt";
 import "./MQTTClient.css"; // Import the dark theme CSS
 
-const MQTT_URL = "ws://broker.hivemq.com:8000/mqtt";
+const MQTT_URL = "wss://test.mosquitto.org:8081/mqtt";
 const TOPICS = ["my/command/topic", "my/response/topic"];
 
 const MQTTClient = () => {
@@ -24,49 +24,34 @@ const MQTTClient = () => {
   const mqttConnect = () => {
     try {
       const mqttClient = new Client(
-        MQTT_URL,
+        "broker.hivemq.com",
+        8000,
+        "/mqtt",
         "mqtt-client-" + Math.random().toString(16).substr(2, 8)
       );
 
-      mqttClient.onConnectionLost = (responseObject) => {
+      mqttClient.onConnectionLost = () => {
         setIsConnected(false);
-        setError("Connection to MQTT broker lost.");
-        setClient(null);
-        console.error("Connection lost:", responseObject.errorMessage);
       };
 
       mqttClient.onMessageArrived = (message) => {
-        console.log("Message Arrived:", message.payloadString);
         addMessage(message.destinationName, message.payloadString);
       };
 
       mqttClient.connect({
+        useSSL: false,
         onSuccess: () => {
           setIsConnected(true);
-          setError(null);
           setClient(mqttClient);
-          console.log("Connected to MQTT broker");
 
-          TOPICS.forEach((topic) => {
-            mqttClient.subscribe(topic, { qos: 0 });
-            console.log(`Subscribed to ${topic}`);
-            setMessages((prevMessages) => ({
-              ...prevMessages,
-              [topic]: [],
-            }));
-          });
+          TOPICS.forEach((topic) => mqttClient.subscribe(topic));
         },
         onFailure: (err) => {
-          setIsConnected(false);
-          setError(`Connection failed: ${err.errorMessage}`);
-          setClient(null);
-          console.error("Connect failed:", err);
+          setError(err.errorMessage);
         },
-        useSSL: false,
       });
-    } catch (e) {
-      setError(`MQTT setup error: ${e.message}`);
-      console.error("MQTT Setup Error:", e);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
